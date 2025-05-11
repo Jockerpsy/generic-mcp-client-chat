@@ -56,26 +56,38 @@ ANTHROPIC_API_KEY=your_api_key_here
 
 ## Running the Application
 
-1. Start the MCP server:
+1. Start the default MCP server:
 ```bash
 python mcp_server.py
 ```
 
-2. Start the main server:
+2. (Optional) Start the second MCP server:
+```bash
+python second_mcp_server.py
+```
+
+3. Start the main server:
 ```bash
 python server.py
 ```
 
-3. Open your web browser and navigate to:
+4. Open your web browser and navigate to:
 ```
 http://localhost:8001
 ```
 
+5. To use the second MCP server's tools:
+   - Click "Add Server" in the web interface
+   - Enter server name (e.g., "math_server")
+   - Enter server URL: `http://localhost:8002/mcp`
+   - Click "Connect"
+
 ## Tool Support
 
-The system currently supports the following tools:
+The system supports multiple MCP servers with different tools:
 
-### Echo Tool
+### Default MCP Server (Port 8000)
+#### Echo Tool
 - **Name**: echo
 - **Description**: Echoes back the input message
 - **Parameters**: 
@@ -85,7 +97,7 @@ The system currently supports the following tools:
   }
   ```
 
-### Repeat Tool
+#### Repeat Tool
 - **Name**: repeat
 - **Description**: Repeats the input message 10 times
 - **Parameters**: 
@@ -95,9 +107,32 @@ The system currently supports the following tools:
   }
   ```
 
+### Second MCP Server (Port 8002)
+#### Count Letters Tool
+- **Name**: count_letters
+- **Description**: Count the number of letters in a word
+- **Parameters**: 
+  ```json
+  {
+    "word": "word to count"
+  }
+  ```
+
+#### Fibonacci Tool
+- **Name**: fibonacci
+- **Description**: Calculate the fibonacci number for a given input
+- **Parameters**: 
+  ```json
+  {
+    "n": 10  // Position in fibonacci sequence (0-based)
+  }
+  ```
+
 To use the tools, simply ask Claude to use them. For example:
 - "Can you use the echo tool to repeat back my message?"
 - "Please use the repeat tool to repeat: Hello World!"
+- "Count the letters in the word 'hello'"
+- "Calculate the 10th fibonacci number"
 
 ## Project Structure
 
