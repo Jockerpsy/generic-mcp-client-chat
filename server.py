@@ -12,6 +12,7 @@ import logging
 from contextlib import asynccontextmanager
 from anthropic import Anthropic
 import json
+import re
 
 # Configure logging
 logging.basicConfig(
@@ -202,15 +203,19 @@ Otherwise, respond normally with your message."""
         
         # Check if response is a tool call
         try:
-            response_text = response.content[0].text
-            # Look for JSON in code blocks
-            if "```json" in response_text:
-                # Extract JSON from code block
-                json_str = response_text.split("```json")[1].split("```")[0].strip()
+            response_text = response.content[0].text.strip()
+            # Try to extract JSON from code block
+            code_block_match = re.search(r'```json\s*(\{[\s\S]*?\})\s*```', response_text)
+            if code_block_match:
+                json_str = code_block_match.group(1)
                 tool_call = json.loads(json_str)
             else:
-                # Try parsing the whole response as JSON
-                tool_call = json.loads(response_text)
+                # Try to find the first JSON object in the text
+                json_match = re.search(r'(\{[\s\S]*\})', response_text)
+                if json_match:
+                    tool_call = json.loads(json_match.group(1))
+                else:
+                    tool_call = json.loads(response_text)
             
             if isinstance(tool_call, dict) and "tool" in tool_call and "parameters" in tool_call:
                 # Parse server and tool name
@@ -223,7 +228,8 @@ Otherwise, respond normally with your message."""
                     tool_call["parameters"]
                 )
                 return {"response": str(tool_response)}
-        except json.JSONDecodeError:
+        except Exception as e:
+            logger.error(f"Tool call parsing/execution failed: {e}")
             # Not a tool call, return Claude's response
             pass
         
