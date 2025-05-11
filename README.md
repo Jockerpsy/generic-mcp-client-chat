@@ -171,7 +171,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Available MCP Servers
 
-Beyond the example servers in this repository, you can connect to public MCP servers. Visit [mcpservers.org/remote-mcp-servers](https://mcpservers.org/remote-mcp-servers) for a list of available servers.
+Beyond the example servers in this repository, you can connect to public MCP servers. Visit [mcpservers.org/remote-mcp-servers](https://mcpservers.org/remote-mcp-servers) for a list of available servers, or check out the [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) repository for a curated collection of MCP server implementations.
 
 A particularly useful one is the [Fetch MCP Server](https://remote.mcpservers.org/fetch/mcp) which allows retrieving and processing web content.
 
