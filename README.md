@@ -88,7 +88,7 @@ The system supports multiple MCP servers with different tools:
 
 ### Default MCP Server (Port 8000)
 - `echo`: Echoes back the input message
-- `repeat`: Repeats the input message 10 times
+- `repeat`: Repeats the input message a specified number of times (default: 10)
 
 ### Math Tools Server (Port 8002)
 - `count_letters`: Count the number of letters in a word
@@ -100,7 +100,7 @@ The system supports multiple MCP servers with different tools:
 
 To use the tools, simply ask Claude to use them. For example:
 - "Can you use the echo tool to repeat back my message?"
-- "Please use the repeat tool to repeat: Hello World!"
+- "Please use the repeat tool to repeat 'Hello World!' 5 times"
 - "Count the letters in the word 'hello'"
 - "Calculate the 10th fibonacci number"
 - "List the contents of the current directory"

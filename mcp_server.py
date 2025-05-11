@@ -19,21 +19,21 @@ mcp = FastMCP(
 def echo(message: str) -> str:
     """Echoes back the input message"""
     logger.info(f"Echo tool called with message: {message}")
-    return f"Echo: {message}"
+    return message
 
 @mcp.tool()
-def repeat(message: str) -> str:
-    """Repeats the input message 10 times"""
-    logger.info(f"Repeat tool called with message: {message}")
-    repeated = "\n".join([message] * 10)
-    return f"Repeating 10 times:\n{repeated}"
+def repeat(message: str, times: int = 10) -> str:
+    """Repeats the input message a specified number of times (default: 10)"""
+    logger.info(f"Repeat tool called with message: {message} and times: {times}")
+    repeated = "\n".join([message] * times)
+    return f"Repeating {times} times:\n{repeated}"
 
 if __name__ == "__main__":
     logger.info("Starting MCP server...")
     logger.info("Server will be available at http://localhost:8000/mcp")
     logger.info("Available tools:")
     logger.info("- echo: Echoes back the input message")
-    logger.info("- repeat: Repeats the input message 10 times")
+    logger.info("- repeat: Repeats the input message a specified number of times")
     mcp.run(
         transport="streamable-http",
         host="0.0.0.0",
