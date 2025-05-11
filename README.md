@@ -169,6 +169,32 @@ All errors are displayed to the user in the chat interface with appropriate styl
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Example MCP Servers
+
+This repository includes several example MCP servers to demonstrate different capabilities:
+
+### Default MCP Server (Port 8000)
+Basic tools for testing:
+- `echo`: Echoes back the input message
+- `repeat`: Repeats the input message 10 times
+
+### Math Tools Server (Port 8002)
+Mathematical operations:
+- `count_letters`: Count the number of letters in a word
+- `fibonacci`: Calculate the fibonacci number for a given input
+
+### File System Server (Port 8003)
+File system navigation tools:
+- `ls`: List contents of a directory with file/folder icons
+- `cd`: Change current working directory
+
+To use any of these example servers:
+1. Start the desired server (e.g., `python example_mcp_servers/file_mcp_server.py`)
+2. Click "Add Server" in the web interface
+3. Enter a server name (e.g., "file_server")
+4. Enter the server URL (e.g., `http://localhost:8003/mcp`)
+5. Click "Connect"
+
 ## Available MCP Servers
 
 Beyond the example servers in this repository, you can connect to public MCP servers. Visit [mcpservers.org/remote-mcp-servers](https://mcpservers.org/remote-mcp-servers) for a list of available servers, or check out the [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) repository for a curated collection of MCP server implementations.
