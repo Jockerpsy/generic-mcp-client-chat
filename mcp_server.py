@@ -1,188 +1,45 @@
-import asyncio
-import websockets
-import json
-import os
-from typing import Dict, Any, List
-from dotenv import load_dotenv
-from anthropic import Anthropic
+from fastmcp import FastMCP
+import logging
 
-load_dotenv()
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-class MCPServer:
-    def __init__(self):
-        self.api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not self.api_key:
-            print("Warning: ANTHROPIC_API_KEY not set in .env file")
-        
-        self.client = Anthropic(api_key=self.api_key)
-        self.conversation_history: List[Dict[str, str]] = []
-        
-        # Define available tools
-        self.tools = {
-            "echo": {
-                "name": "echo",
-                "description": "Echoes back the input message",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "message": {
-                            "type": "string",
-                            "description": "Message to echo back"
-                        }
-                    },
-                    "required": ["message"]
-                }
-            }
-        }
+# Create an MCP server
+mcp = FastMCP(
+    "Tools Server",
+    description="A server providing echo and conversation history tools",
+    version="1.0.0"
+)
 
-    async def get_llm_response(self, message: str) -> str:
-        if not self.api_key:
-            return "Error: Anthropic API key not configured. Please set ANTHROPIC_API_KEY in .env file"
-        
-        try:
-            # Add user message to history
-            self.conversation_history.append({"role": "user", "content": message})
-            
-            # Get response from Claude
-            response = self.client.beta.messages.create(
-                model="claude-3-sonnet-20240229",
-                max_tokens=1000,
-                temperature=0.7,
-                messages=self.conversation_history,
-                system="""You are a helpful AI assistant with access to tools. You can:
-1. Answer questions directly
-2. Use tools when appropriate
-3. Format responses using markdown
-4. Maintain context of the conversation
+@mcp.tool()
+def echo(message: str) -> str:
+    """Echo back the input message"""
+    logger.info(f"Echo tool called with message: {message}")
+    return f"Echo: {message}"
 
-When using tools, format your response as a JSON object with:
-{
-    "type": "tool_call",
-    "name": "tool_name",
-    "parameters": {
-        "param1": "value1"
-    }
-}
-
-Available tools:
-- echo: Echoes back the input message. Parameters: {"message": "text to echo"}
-"""
-            )
-            
-            # Add assistant response to history
-            assistant_message = response.content[0].text
-            self.conversation_history.append({"role": "assistant", "content": assistant_message})
-            
-            # Keep conversation history manageable
-            if len(self.conversation_history) > 10:
-                self.conversation_history = self.conversation_history[-10:]
-            
-            return assistant_message
-            
-        except Exception as e:
-            print(f"Error calling Anthropic API: {e}")
-            return f"Error: Failed to get response from Claude: {str(e)}"
-
-    async def handle_message(self, websocket, message: Dict[str, Any]):
-        print(f"Handling message: {message}")
-        
-        if message.get("type") == "message":
-            # Get response from LLM
-            user_message = message.get('content', '')
-            print(f"Getting LLM response for: {user_message}")
-            llm_response = await self.get_llm_response(user_message)
-            
-            # Check if the response is a tool call
-            try:
-                tool_call = json.loads(llm_response)
-                if isinstance(tool_call, dict) and tool_call.get("type") == "tool_call":
-                    # Handle tool call
-                    tool_name = tool_call.get("name", "").lower()  # Convert to lowercase
-                    if tool_name in self.tools:
-                        params = tool_call.get("parameters", {})
-                        response = {
-                            "type": "tool_response",
-                            "name": tool_name,
-                            "content": params.get("message", "")
-                        }
-                    else:
-                        response = {
-                            "type": "error",
-                            "content": f"Unknown tool: {tool_name}"
-                        }
-                else:
-                    response = {
-                        "type": "message",
-                        "content": llm_response
-                    }
-            except json.JSONDecodeError:
-                # Not a tool call, treat as regular message
-                response = {
-                    "type": "message",
-                    "content": llm_response
-                }
-            
-            print(f"Sending response: {response}")
-            await websocket.send(json.dumps(response))
-        
-        elif message.get("type") == "tool_call":
-            # Handle direct tool calls from client
-            tool_name = message.get("name", "").lower()  # Convert to lowercase
-            if tool_name in self.tools:
-                params = message.get("parameters", {})
-                response = {
-                    "type": "tool_response",
-                    "name": tool_name,
-                    "content": params.get("message", "")
-                }
-                print(f"Sending tool response: {response}")
-                await websocket.send(json.dumps(response))
-            else:
-                response = {
-                    "type": "error",
-                    "content": f"Unknown tool: {tool_name}"
-                }
-                print(f"Sending error response: {response}")
-                await websocket.send(json.dumps(response))
-        else:
-            response = {
-                "type": "error",
-                "content": f"Unknown message type: {message.get('type')}"
-            }
-            print(f"Sending error response: {response}")
-            await websocket.send(json.dumps(response))
-
-    async def handle_client(self, websocket, path):
-        print(f"New connection from {websocket.remote_address} on path {path}")
-        
-        if path != "/mcp":
-            print(f"Invalid path: {path}")
-            await websocket.close(1008, "Invalid path")
-            return
-            
-        try:
-            async for message in websocket:
-                try:
-                    print(f"Received raw message: {message}")
-                    data = json.loads(message)
-                    await self.handle_message(websocket, data)
-                except json.JSONDecodeError as e:
-                    print(f"JSON decode error: {e}")
-                    response = {
-                        "type": "error",
-                        "content": "Invalid JSON message"
-                    }
-                    await websocket.send(json.dumps(response))
-        except websockets.exceptions.ConnectionClosed as e:
-            print(f"Connection closed: {e}")
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-
-async def main():
-    server = MCPServer()
-    async with websockets.serve(server.handle_client, "localhost", 8000):
-        print("MCP Server running on ws://localhost:8000/mcp")
-        await asyncio.Future()  # run forever
+@mcp.resource("conversation://history")
+def get_conversation_history() -> str:
+    """Get the current conversation history"""
+    history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in mcp.conversation_history])
+    logger.info(f"Conversation history requested. Length: {len(mcp.conversation_history)} messages")
+    return history
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    logger.info("Starting MCP server...")
+    logger.info("Server will be available at http://localhost:8000/mcp")
+    logger.info("Available tools:")
+    logger.info("- echo: Echoes back the input message")
+    logger.info("Available resources:")
+    logger.info("- conversation://history: Returns the conversation history")
+    
+    # Run the server with streamable-http transport
+    mcp.run(
+        transport="streamable-http",  # Use streamable-http transport
+        host="0.0.0.0",
+        port=8000,
+        path="/mcp"
+    ) 
