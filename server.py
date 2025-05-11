@@ -241,7 +241,12 @@ Otherwise, respond normally with your message."""
 @app.get("/api/servers")
 async def list_servers():
     """List all connected servers"""
-    return {"servers": [name for name in mcp_manager._clients.keys() if mcp_manager.is_connected(name)]}
+    connected_servers = []
+    for server_name in mcp_manager._clients.keys():
+        if mcp_manager.is_connected(server_name):
+            connected_servers.append(server_name)
+    logger.info(f"Listing connected servers: {connected_servers}")
+    return {"servers": connected_servers}
 
 if __name__ == "__main__":
     import uvicorn

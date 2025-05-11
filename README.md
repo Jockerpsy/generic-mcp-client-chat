@@ -167,4 +167,12 @@ All errors are displayed to the user in the chat interface with appropriate styl
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Available MCP Servers
+
+Beyond the example servers in this repository, you can connect to public MCP servers. Visit [mcpservers.org/remote-mcp-servers](https://mcpservers.org/remote-mcp-servers) for a list of available servers.
+
+A particularly useful one is the [Fetch MCP Server](https://remote.mcpservers.org/fetch/mcp) which allows retrieving and processing web content.
+
+To use any of these servers, add them through the web interface by clicking "Add Server" and entering their MCP endpoint URL. 

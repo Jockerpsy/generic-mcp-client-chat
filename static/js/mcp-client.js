@@ -150,15 +150,45 @@ function addMessageToChat(role, content) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
-    // Set up the default server button
-    const defaultServerButton = document.querySelector('.server-item button');
-    if (defaultServerButton) {
-        defaultServerButton.textContent = 'Disconnect';
-        defaultServerButton.onclick = () => disconnectFromServer(defaultServerButton);
-    }
+    // Get the original Add Server button
+    const addButton = document.querySelector('.add-server-button');
     
-    // Check initial server connections
-    await updateServerList();
+    // Clear the default server list but preserve the Add Server button
+    const serverList = document.getElementById('serverList');
+    const serverItems = serverList.querySelectorAll('.server-item');
+    serverItems.forEach(item => item.remove());
+    
+    // Get current server connections
+    try {
+        const response = await fetch('/api/servers');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Add each connected server to the list
+        for (const serverName of data.servers) {
+            const serverItem = document.createElement('div');
+            serverItem.className = 'server-item';
+            serverItem.innerHTML = `
+                <input type="text" placeholder="Server name" value="${serverName}" readonly />
+                <input type="text" placeholder="Server URL" value="http://localhost:${serverName === 'default_mcp' ? '8000' : '8002'}/mcp" readonly />
+                <button onclick="disconnectFromServer(this)">Disconnect</button>
+                <span class="server-status connected">Connected</span>
+            `;
+            serverList.insertBefore(serverItem, addButton);
+        }
+        
+        // Update server list message
+        if (data.servers.length === 0) {
+            addMessageToChat('system', 'No MCP servers connected. Please add a server.');
+        } else {
+            addMessageToChat('system', `Connected to ${data.servers.length} MCP servers: ${data.servers.join(', ')}`);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        addMessageToChat('error', 'Error loading server list: ' + error.message);
+    }
     
     // Add enter key handler for message input
     const messageInput = document.getElementById('messageInput');
