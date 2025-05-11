@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from mcp_client import MCPManager
 import logging
 from contextlib import asynccontextmanager
+from anthropic import Anthropic
 
 # Configure logging
 logging.basicConfig(
@@ -19,6 +20,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+# Initialize Anthropic client
+api_key = os.getenv("ANTHROPIC_API_KEY")
+if not api_key:
+    raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
+anthropic = Anthropic(api_key=api_key)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -143,17 +150,39 @@ async def chat(request: Request):
         message = data.get("message", "")
         server_name = data.get("server", "claude")  # Default to claude if not specified
         
-        if not mcp_manager.is_connected(server_name):
-            raise HTTPException(status_code=503, detail=f"Server {server_name} is not connected")
-        
-        # Call the echo tool with the message
-        response = await mcp_manager.call_tool(server_name, "echo", {"message": message})
-        
-        # Ensure response is a string
-        if not isinstance(response, str):
-            response = str(response)
+        if server_name == "claude":
+            # Use Anthropic client for Claude
+            response = anthropic.messages.create(
+                model="claude-3-7-sonnet-20250219",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": message}]
+            )
+            return {"response": response.content[0].text}
+        else:
+            # Use MCP server for other servers
+            if not mcp_manager.is_connected(server_name):
+                raise HTTPException(status_code=503, detail=f"Server {server_name} is not connected")
             
-        return {"response": response}
+            # Get available tools
+            tools = await mcp_manager.list_tools(server_name)
+            tool_names = [tool.name for tool in tools]
+            
+            # If the message starts with a tool name, use that tool
+            first_word = message.split()[0].lower() if message else ""
+            if first_word in tool_names and first_word != "chat":
+                # Extract the tool name and parameters
+                tool_name = first_word
+                parameters = {"message": " ".join(message.split()[1:])}
+                response = await mcp_manager.call_tool(server_name, tool_name, parameters)
+            else:
+                # Use the chat tool for regular messages
+                response = await mcp_manager.call_tool(server_name, "chat", {"message": message})
+            
+            # Ensure response is a string
+            if not isinstance(response, str):
+                response = str(response)
+                
+            return {"response": response}
     except ConnectionError as e:
         logger.error(f"Connection error: {e}")
         raise HTTPException(status_code=503, detail=str(e))

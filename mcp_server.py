@@ -21,6 +21,17 @@ def echo(message: str) -> str:
     logger.info(f"Echo tool called with message: {message}")
     return f"Echo: {message}"
 
+@mcp.tool()
+def chat(message: str) -> str:
+    """Handle chat messages"""
+    logger.info(f"Chat tool called with message: {message}")
+    # Add the message to conversation history
+    mcp.conversation_history.append({"role": "user", "content": message})
+    # For now, just echo back with a chat prefix
+    response = f"Chat: {message}"
+    mcp.conversation_history.append({"role": "assistant", "content": response})
+    return response
+
 @mcp.resource("conversation://history")
 def get_conversation_history() -> str:
     """Get the current conversation history"""
@@ -33,6 +44,7 @@ if __name__ == "__main__":
     logger.info("Server will be available at http://localhost:8000/mcp")
     logger.info("Available tools:")
     logger.info("- echo: Echoes back the input message")
+    logger.info("- chat: Handles chat messages")
     logger.info("Available resources:")
     logger.info("- conversation://history: Returns the conversation history")
     
