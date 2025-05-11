@@ -1,6 +1,14 @@
-# MCP Chat Client
+# Generic MCP Client Chat
 
 A simple chat client that connects to an MCP (Model Control Protocol) server, allowing you to interact with LLMs and use MCP tools.
+
+Vibe coded using cursor. 
+
+## Goals
+
+I believe we should have completely generic agents and completely generic UIs.
+
+People should not need to write new code to write new agents. This UI is an experiment in building this generic MCP client.
 
 ## Setup
 
