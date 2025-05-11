@@ -2,7 +2,7 @@ import asyncio
 import websockets
 import json
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 from dotenv import load_dotenv
 from anthropic import Anthropic
 
@@ -15,8 +15,9 @@ class MCPServer:
             print("Warning: ANTHROPIC_API_KEY not set in .env file")
         
         self.client = Anthropic(api_key=self.api_key)
-        self.conversation_history = []
+        self.conversation_history: List[Dict[str, str]] = []
         
+        # Define available tools
         self.tools = {
             "echo": {
                 "name": "echo",
@@ -43,11 +44,29 @@ class MCPServer:
             self.conversation_history.append({"role": "user", "content": message})
             
             # Get response from Claude
-            response = self.client.messages.create(
-                model="claude-3-opus-20240229",
+            response = self.client.beta.messages.create(
+                model="claude-3-sonnet-20240229",
                 max_tokens=1000,
                 temperature=0.7,
-                messages=self.conversation_history
+                messages=self.conversation_history,
+                system="""You are a helpful AI assistant with access to tools. You can:
+1. Answer questions directly
+2. Use tools when appropriate
+3. Format responses using markdown
+4. Maintain context of the conversation
+
+When using tools, format your response as a JSON object with:
+{
+    "type": "tool_call",
+    "name": "tool_name",
+    "parameters": {
+        "param1": "value1"
+    }
+}
+
+Available tools:
+- echo: Echoes back the input message. Parameters: {"message": "text to echo"}
+"""
             )
             
             # Add assistant response to history
@@ -73,21 +92,47 @@ class MCPServer:
             print(f"Getting LLM response for: {user_message}")
             llm_response = await self.get_llm_response(user_message)
             
-            response = {
-                "type": "message",
-                "content": llm_response
-            }
+            # Check if the response is a tool call
+            try:
+                tool_call = json.loads(llm_response)
+                if isinstance(tool_call, dict) and tool_call.get("type") == "tool_call":
+                    # Handle tool call
+                    tool_name = tool_call.get("name", "").lower()  # Convert to lowercase
+                    if tool_name in self.tools:
+                        params = tool_call.get("parameters", {})
+                        response = {
+                            "type": "tool_response",
+                            "name": tool_name,
+                            "content": params.get("message", "")
+                        }
+                    else:
+                        response = {
+                            "type": "error",
+                            "content": f"Unknown tool: {tool_name}"
+                        }
+                else:
+                    response = {
+                        "type": "message",
+                        "content": llm_response
+                    }
+            except json.JSONDecodeError:
+                # Not a tool call, treat as regular message
+                response = {
+                    "type": "message",
+                    "content": llm_response
+                }
+            
             print(f"Sending response: {response}")
             await websocket.send(json.dumps(response))
         
         elif message.get("type") == "tool_call":
-            # Handle tool calls
-            tool_name = message.get("name")
-            if tool_name == "echo":
+            # Handle direct tool calls from client
+            tool_name = message.get("name", "").lower()  # Convert to lowercase
+            if tool_name in self.tools:
                 params = message.get("parameters", {})
                 response = {
                     "type": "tool_response",
-                    "name": "echo",
+                    "name": tool_name,
                     "content": params.get("message", "")
                 }
                 print(f"Sending tool response: {response}")
