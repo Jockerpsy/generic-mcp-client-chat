@@ -87,52 +87,24 @@ http://localhost:8001
 The system supports multiple MCP servers with different tools:
 
 ### Default MCP Server (Port 8000)
-#### Echo Tool
-- **Name**: echo
-- **Description**: Echoes back the input message
-- **Parameters**: 
-  ```json
-  {
-    "message": "text to echo"
-  }
-  ```
+- `echo`: Echoes back the input message
+- `repeat`: Repeats the input message 10 times
 
-#### Repeat Tool
-- **Name**: repeat
-- **Description**: Repeats the input message 10 times
-- **Parameters**: 
-  ```json
-  {
-    "message": "text to repeat"
-  }
-  ```
+### Math Tools Server (Port 8002)
+- `count_letters`: Count the number of letters in a word
+- `fibonacci`: Calculate the fibonacci number for a given input
 
-### Second MCP Server (Port 8002)
-#### Count Letters Tool
-- **Name**: count_letters
-- **Description**: Count the number of letters in a word
-- **Parameters**: 
-  ```json
-  {
-    "word": "word to count"
-  }
-  ```
-
-#### Fibonacci Tool
-- **Name**: fibonacci
-- **Description**: Calculate the fibonacci number for a given input
-- **Parameters**: 
-  ```json
-  {
-    "n": 10  // Position in fibonacci sequence (0-based)
-  }
-  ```
+### File System Server (Port 8003)
+- `ls`: List contents of a directory with file/folder icons
+- `cd`: Change current working directory
 
 To use the tools, simply ask Claude to use them. For example:
 - "Can you use the echo tool to repeat back my message?"
 - "Please use the repeat tool to repeat: Hello World!"
 - "Count the letters in the word 'hello'"
 - "Calculate the 10th fibonacci number"
+- "List the contents of the current directory"
+- "Change to the parent directory"
 
 ## Project Structure
 
@@ -171,24 +143,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Example MCP Servers
 
-This repository includes several example MCP servers to demonstrate different capabilities:
-
-### Default MCP Server (Port 8000)
-Basic tools for testing:
-- `echo`: Echoes back the input message
-- `repeat`: Repeats the input message 10 times
-
-### Math Tools Server (Port 8002)
-Mathematical operations:
-- `count_letters`: Count the number of letters in a word
-- `fibonacci`: Calculate the fibonacci number for a given input
-
-### File System Server (Port 8003)
-File system navigation tools:
-- `ls`: List contents of a directory with file/folder icons
-- `cd`: Change current working directory
-
-To use any of these example servers:
+This repository includes several example MCP servers to demonstrate different capabilities. To use any of these example servers:
 1. Start the desired server (e.g., `python example_mcp_servers/file_mcp_server.py`)
 2. Click "Add Server" in the web interface
 3. Enter a server name (e.g., "file_server")
