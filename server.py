@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from anthropic import Anthropic
 import json
 import re
+from fastapi.responses import FileResponse
 
 # Configure logging
 logging.basicConfig(
@@ -247,6 +248,11 @@ async def list_servers():
             connected_servers.append(server_name)
     logger.info(f"Listing connected servers: {connected_servers}")
     return {"servers": connected_servers}
+
+@app.get("/")
+async def get_index():
+    """Serve the main page"""
+    return FileResponse("static/index.html")
 
 if __name__ == "__main__":
     import uvicorn
