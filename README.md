@@ -10,6 +10,10 @@ I believe we should have completely generic agents and completely generic UIs.
 
 People should not need to write new code to write new agents. This UI is an experiment in building this generic MCP client.
 
+## Screenshot
+
+![MCP Chat Interface](screenshot.png)
+
 ## Features
 
 - Real-time chat interface with Claude 3 Sonnet
