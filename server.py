@@ -51,9 +51,15 @@ async def lifespan(app: FastAPI):
     else:
         logger.error(f"Basic availability check failed for default MCP server at {default_mcp_server_url}. Will not attempt FastMCP connection on startup.")
     
+    # Connect to all default servers
+    for server_name, server_url in DEFAULT_SERVERS.items():
+        if await check_server_availability(server_url):
+            logger.info(f"Connecting to default server '{server_name}' at {server_url}")
+            await mcp_manager.connect(server_name, server_url)
+    
     yield
     
-    # Shutdown
+    # Disconnect from all servers
     for server_name in list(mcp_manager._clients.keys()):
         await mcp_manager.disconnect(server_name)
 
@@ -86,8 +92,7 @@ class ConnectionRequest(BaseModel):
     api_key: Optional[str] = None
 
 class ChatRequest(BaseModel):
-    server_name: str
-    message: str
+    message: str  # Removed server_name since we'll use all servers
 
 class DisconnectRequest(BaseModel):
     server_name: str
@@ -149,95 +154,69 @@ async def chat(request: Request):
     try:
         data = await request.json()
         message = data.get("message", "")
-        server_name = data.get("server", "claude")  # Default to claude if not connected
         
-        if server_name == "claude":
-            # Get available tools from MCP server
-            tools = await mcp_manager.list_tools("default_mcp_server")
-            tool_descriptions = [
-                {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "input_schema": tool.inputSchema
-                }
-                for tool in tools
-            ]
-            
-            # Create system message with tool descriptions
-            system_content = f"""You are a helpful AI assistant with access to the following tools:
-{json.dumps(tool_descriptions, indent=2)}
+        # Get response from Claude with all available tools
+        all_tools = []
+        for server_name in mcp_manager._clients.keys():
+            if mcp_manager.is_connected(server_name):
+                tools = await mcp_manager.list_tools(server_name)
+                for tool in tools:
+                    all_tools.append({
+                        "name": f"{server_name}.{tool.name}",  # Prefix tool name with server
+                        "description": tool.description,
+                        "input_schema": tool.inputSchema,
+                        "server": server_name
+                    })
+        
+        # Create system message with tool descriptions
+        system_content = f"""You are a helpful AI assistant with access to the following tools:
+{json.dumps(all_tools, indent=2)}
 
 When you need to use a tool, respond with a JSON object in this format:
 {{
-    "tool": "tool_name",
+    "tool": "server_name.tool_name",
     "parameters": {{
         "param_name": "param_value"
     }}
 }}
 
 Otherwise, respond normally with your message."""
-            
-            # Get response from Claude
-            response = anthropic.messages.create(
-                model="claude-3-7-sonnet-20250219",
-                max_tokens=1024,
-                system=system_content,
-                messages=[{"role": "user", "content": message}]
-            )
-            
-            # Check if response is a tool call
-            try:
-                response_text = response.content[0].text
-                # Look for JSON in code blocks
-                if "```json" in response_text:
-                    # Extract JSON from code block
-                    json_str = response_text.split("```json")[1].split("```")[0].strip()
-                    tool_call = json.loads(json_str)
-                else:
-                    # Try parsing the whole response as JSON
-                    tool_call = json.loads(response_text)
-                
-                if isinstance(tool_call, dict) and "tool" in tool_call and "parameters" in tool_call:
-                    # Execute the tool call
-                    tool_response = await mcp_manager.call_tool(
-                        "default_mcp_server",
-                        tool_call["tool"],
-                        tool_call["parameters"]
-                    )
-                    return {"response": str(tool_response)}
-            except json.JSONDecodeError:
-                # Not a tool call, return Claude's response
-                pass
-            
-            return {"response": response.content[0].text}
-        else:
-            # Use MCP server for other servers
-            if not mcp_manager.is_connected(server_name):
-                raise HTTPException(status_code=503, detail=f"Server {server_name} is not connected")
-            
-            # Get available tools
-            tools = await mcp_manager.list_tools(server_name)
-            tool_names = [tool.name for tool in tools]
-            
-            # If the message starts with a tool name, use that tool
-            first_word = message.split()[0].lower() if message else ""
-            if first_word in tool_names and first_word != "chat":
-                # Extract the tool name and parameters
-                tool_name = first_word
-                parameters = {"message": " ".join(message.split()[1:])}
-                response = await mcp_manager.call_tool(server_name, tool_name, parameters)
+        
+        # Get response from Claude
+        response = anthropic.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=1024,
+            system=system_content,
+            messages=[{"role": "user", "content": message}]
+        )
+        
+        # Check if response is a tool call
+        try:
+            response_text = response.content[0].text
+            # Look for JSON in code blocks
+            if "```json" in response_text:
+                # Extract JSON from code block
+                json_str = response_text.split("```json")[1].split("```")[0].strip()
+                tool_call = json.loads(json_str)
             else:
-                # Use the chat tool for regular messages
-                response = await mcp_manager.call_tool(server_name, "chat", {"message": message})
+                # Try parsing the whole response as JSON
+                tool_call = json.loads(response_text)
             
-            # Ensure response is a string
-            if not isinstance(response, str):
-                response = str(response)
-                
-            return {"response": response}
-    except ConnectionError as e:
-        logger.error(f"Connection error: {e}")
-        raise HTTPException(status_code=503, detail=str(e))
+            if isinstance(tool_call, dict) and "tool" in tool_call and "parameters" in tool_call:
+                # Parse server and tool name
+                server_name, tool_name = tool_call["tool"].split(".", 1)
+                # Execute the tool call
+                tool_response = await mcp_manager.call_tool(
+                    server_name,
+                    tool_name,
+                    tool_call["parameters"]
+                )
+                return {"response": str(tool_response)}
+        except json.JSONDecodeError:
+            # Not a tool call, return Claude's response
+            pass
+        
+        return {"response": response.content[0].text}
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -245,7 +224,12 @@ Otherwise, respond normally with your message."""
 @app.get("/api/servers")
 async def list_servers():
     """List all connected servers"""
-    return {"servers": list(mcp_manager.list_servers())}
+    return {"servers": [name for name in mcp_manager._clients.keys() if mcp_manager.is_connected(name)]}
+
+# Add default servers to connect on startup
+DEFAULT_SERVERS = {
+    "default_mcp": "http://localhost:8000/mcp"  # Single default server with proper name
+}
 
 if __name__ == "__main__":
     import uvicorn

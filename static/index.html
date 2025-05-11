@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Chat Interface</title>
+    <title>MCP Chat</title>
+    <link rel="stylesheet" href="css/styles.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,19 +25,25 @@
             padding: 10px;
             border-radius: 5px;
         }
-        .user-message {
+        .user {
             background-color: #e3f2fd;
             margin-left: 20%;
         }
-        .assistant-message {
+        .assistant {
             background-color: #f5f5f5;
             margin-right: 20%;
         }
-        .error-message {
+        .error {
             background-color: #ffebee;
             color: #c62828;
             margin-right: 20%;
             border-left: 3px solid #c62828;
+        }
+        .system {
+            background-color: #fff3e0;
+            color: #e65100;
+            text-align: center;
+            font-style: italic;
         }
         .input-container {
             display: flex;
@@ -65,20 +72,6 @@
         button:disabled {
             background-color: #bdbdbd;
             cursor: not-allowed;
-        }
-        .status {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .connected {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-        }
-        .disconnected {
-            background-color: #ffebee;
-            color: #c62828;
         }
         .server-config {
             margin-bottom: 20px;
@@ -125,214 +118,25 @@
 </head>
 <body>
     <div class="server-config">
-        <h3>LLM Servers</h3>
+        <h3>MCP Servers</h3>
         <div id="serverList" class="server-list">
             <div class="server-item">
-                <input type="text" placeholder="Server name" value="claude" />
+                <input type="text" placeholder="Server name" value="default_mcp" />
                 <input type="text" placeholder="Server URL" value="http://localhost:8000/mcp" />
-                <input type="text" placeholder="API Key (optional)" />
                 <button onclick="connectToServer(this)">Connect</button>
-                <span class="server-status disconnected">Disconnected</span>
+                <span class="server-status connected">Connected</span>
             </div>
         </div>
         <button onclick="addServer()">Add Server</button>
     </div>
 
     <div class="chat-container">
-        <div id="chatMessages"></div>
+        <div id="chatMessages" class="chat-messages"></div>
         <div class="input-container">
-            <select id="serverSelect">
-                <option value="">Select a server...</option>
-            </select>
-            <input type="text" id="messageInput" placeholder="Type your message..." disabled />
-            <button id="sendButton" disabled>Send</button>
+            <input type="text" id="messageInput" placeholder="Type your message...">
+            <button onclick="sendMessage()">Send</button>
         </div>
-        <div id="status" class="status disconnected">No server selected</div>
     </div>
-
-    <script>
-        const chatMessages = document.getElementById('chatMessages');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const statusDiv = document.getElementById('status');
-        const serverSelect = document.getElementById('serverSelect');
-        const serverList = document.getElementById('serverList');
-        let connectedServers = new Set();
-
-        function addServer() {
-            const serverItem = document.createElement('div');
-            serverItem.className = 'server-item';
-            serverItem.innerHTML = `
-                <input type="text" placeholder="Server name" />
-                <input type="text" placeholder="Server URL" value="http://localhost:8000/mcp" />
-                <input type="text" placeholder="API Key (optional)" />
-                <button onclick="connectToServer(this)">Connect</button>
-                <span class="server-status disconnected">Disconnected</span>
-            `;
-            serverList.appendChild(serverItem);
-        }
-
-        async function connectToServer(button) {
-            const serverItem = button.parentElement;
-            const nameInput = serverItem.querySelector('input:nth-child(1)');
-            const urlInput = serverItem.querySelector('input:nth-child(2)');
-            const keyInput = serverItem.querySelector('input:nth-child(3)');
-            const statusSpan = serverItem.querySelector('.server-status');
-            
-            const serverName = nameInput.value.trim();
-            const serverUrl = urlInput.value.trim();
-            const apiKey = keyInput.value.trim();
-
-            if (!serverName || !serverUrl) {
-                addMessage('Please enter both server name and URL', 'error-message');
-                return;
-            }
-
-            try {
-                statusSpan.textContent = 'Connecting...';
-                statusSpan.className = 'server-status disconnected';
-
-                const response = await fetch('/api/connect', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        server_name: serverName,
-                        server_url: serverUrl,
-                        api_key: apiKey || null
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.detail || `Failed to connect: ${response.statusText}`);
-                }
-
-                connectedServers.add(serverName);
-                statusSpan.textContent = 'Connected';
-                statusSpan.className = 'server-status connected';
-                button.textContent = 'Disconnect';
-                button.onclick = () => disconnectFromServer(button);
-                updateServerSelect();
-                updateStatus();
-            } catch (error) {
-                console.error('Connection error:', error);
-                statusSpan.textContent = 'Connection failed';
-                statusSpan.className = 'server-status disconnected';
-                addMessage(`Error: ${error.message}`, 'error-message');
-            }
-        }
-
-        async function disconnectFromServer(button) {
-            const serverItem = button.parentElement;
-            const serverName = serverItem.querySelector('input:first-child').value.trim();
-            const statusSpan = serverItem.querySelector('.server-status');
-
-            try {
-                const response = await fetch('/api/disconnect', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ server_name: serverName })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Failed to disconnect: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                if (data.success) {
-                    connectedServers.delete(serverName);
-                    statusSpan.textContent = 'Disconnected';
-                    statusSpan.className = 'server-status disconnected';
-                    button.textContent = 'Connect';
-                    button.onclick = () => connectToServer(button);
-                    updateServerSelect();
-                    updateStatus();
-                }
-            } catch (error) {
-                console.error('Disconnection error:', error);
-                addMessage(`Error: ${error.message}`, 'error-message');
-            }
-        }
-
-        function updateServerSelect() {
-            serverSelect.innerHTML = '<option value="">Select a server...</option>';
-            connectedServers.forEach(server => {
-                const option = document.createElement('option');
-                option.value = server;
-                option.textContent = server;
-                serverSelect.appendChild(option);
-            });
-        }
-
-        function updateStatus() {
-            const selectedServer = serverSelect.value;
-            if (selectedServer) {
-                statusDiv.textContent = `Connected to ${selectedServer}`;
-                statusDiv.className = 'status connected';
-                messageInput.disabled = false;
-                sendButton.disabled = false;
-            } else {
-                statusDiv.textContent = 'No server selected';
-                statusDiv.className = 'status disconnected';
-                messageInput.disabled = true;
-                sendButton.disabled = true;
-            }
-        }
-
-        async function sendMessage() {
-            const message = messageInput.value.trim();
-            const selectedServer = serverSelect.value;
-            
-            if (!message || !selectedServer) return;
-
-            try {
-                addMessage(message, 'user-message');
-                messageInput.value = '';
-
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message: message,
-                        server_name: selectedServer
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                addMessage(data.response, 'assistant-message');
-            } catch (error) {
-                console.error('Error sending message:', error);
-                addMessage(`Error: ${error.message}`, 'error-message');
-            }
-        }
-
-        function addMessage(content, type) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}`;
-            messageDiv.textContent = content;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Event listeners
-        sendButton.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-        serverSelect.addEventListener('change', updateStatus);
-    </script>
+    <script src="js/mcp-client.js"></script>
 </body>
 </html> 
