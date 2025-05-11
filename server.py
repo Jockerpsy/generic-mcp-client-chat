@@ -32,7 +32,7 @@ anthropic = Anthropic(api_key=api_key)
 async def lifespan(app: FastAPI):
     # Startup
     default_mcp_server_url = "http://localhost:8000/mcp" # Full path
-    default_server_name = "default_mcp_server"
+    default_server_name = "default_mcp"
     logger.info(f"Attempting to connect to default MCP server '{default_server_name}' at {default_mcp_server_url} on startup.")
     
     # Perform a quick availability check first
@@ -50,12 +50,6 @@ async def lifespan(app: FastAPI):
             logger.error(f"Failed to connect to default MCP server '{default_server_name}' using MCPManager after availability check.")
     else:
         logger.error(f"Basic availability check failed for default MCP server at {default_mcp_server_url}. Will not attempt FastMCP connection on startup.")
-    
-    # Connect to all default servers
-    for server_name, server_url in DEFAULT_SERVERS.items():
-        if await check_server_availability(server_url):
-            logger.info(f"Connecting to default server '{server_name}' at {server_url}")
-            await mcp_manager.connect(server_name, server_url)
     
     yield
     
@@ -159,14 +153,22 @@ async def chat(request: Request):
         all_tools = []
         for server_name in mcp_manager._clients.keys():
             if mcp_manager.is_connected(server_name):
-                tools = await mcp_manager.list_tools(server_name)
-                for tool in tools:
-                    all_tools.append({
-                        "name": f"{server_name}.{tool.name}",  # Prefix tool name with server
-                        "description": tool.description,
-                        "input_schema": tool.inputSchema,
-                        "server": server_name
-                    })
+                try:
+                    tools = await mcp_manager.list_tools(server_name)
+                    logger.info(f"Found {len(tools)} tools on server {server_name}")
+                    for tool in tools:
+                        tool_info = {
+                            "name": f"{server_name}.{tool.name}",  # Prefix tool name with server
+                            "description": tool.description,
+                            "input_schema": tool.inputSchema,
+                            "server": server_name
+                        }
+                        logger.info(f"Adding tool: {tool_info['name']}")
+                        all_tools.append(tool_info)
+                except Exception as e:
+                    logger.error(f"Error getting tools from server {server_name}: {e}")
+        
+        logger.info(f"Total tools available: {len(all_tools)}")
         
         # Create system message with tool descriptions
         system_content = f"""You are a helpful AI assistant with access to the following tools:
@@ -177,6 +179,14 @@ When you need to use a tool, respond with a JSON object in this format:
     "tool": "server_name.tool_name",
     "parameters": {{
         "param_name": "param_value"
+    }}
+}}
+
+For example, to use the echo tool, respond with:
+{{
+    "tool": "default_mcp.echo",
+    "parameters": {{
+        "message": "your message here"
     }}
 }}
 
@@ -205,6 +215,7 @@ Otherwise, respond normally with your message."""
             if isinstance(tool_call, dict) and "tool" in tool_call and "parameters" in tool_call:
                 # Parse server and tool name
                 server_name, tool_name = tool_call["tool"].split(".", 1)
+                logger.info(f"Executing tool call: {tool_name} on server {server_name}")
                 # Execute the tool call
                 tool_response = await mcp_manager.call_tool(
                     server_name,
@@ -225,11 +236,6 @@ Otherwise, respond normally with your message."""
 async def list_servers():
     """List all connected servers"""
     return {"servers": [name for name in mcp_manager._clients.keys() if mcp_manager.is_connected(name)]}
-
-# Add default servers to connect on startup
-DEFAULT_SERVERS = {
-    "default_mcp": "http://localhost:8000/mcp"  # Single default server with proper name
-}
 
 if __name__ == "__main__":
     import uvicorn
