@@ -11,6 +11,7 @@ from mcp_client import MCPManager
 import logging
 from contextlib import asynccontextmanager
 from anthropic import Anthropic
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -148,15 +149,66 @@ async def chat(request: Request):
     try:
         data = await request.json()
         message = data.get("message", "")
-        server_name = data.get("server", "claude")  # Default to claude if not specified
+        server_name = data.get("server", "claude")  # Default to claude if not connected
         
         if server_name == "claude":
-            # Use Anthropic client for Claude
+            # Get available tools from MCP server
+            tools = await mcp_manager.list_tools("default_mcp_server")
+            tool_descriptions = [
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "input_schema": tool.inputSchema
+                }
+                for tool in tools
+            ]
+            
+            # Create system message with tool descriptions
+            system_content = f"""You are a helpful AI assistant with access to the following tools:
+{json.dumps(tool_descriptions, indent=2)}
+
+When you need to use a tool, respond with a JSON object in this format:
+{{
+    "tool": "tool_name",
+    "parameters": {{
+        "param_name": "param_value"
+    }}
+}}
+
+Otherwise, respond normally with your message."""
+            
+            # Get response from Claude
             response = anthropic.messages.create(
                 model="claude-3-7-sonnet-20250219",
                 max_tokens=1024,
+                system=system_content,
                 messages=[{"role": "user", "content": message}]
             )
+            
+            # Check if response is a tool call
+            try:
+                response_text = response.content[0].text
+                # Look for JSON in code blocks
+                if "```json" in response_text:
+                    # Extract JSON from code block
+                    json_str = response_text.split("```json")[1].split("```")[0].strip()
+                    tool_call = json.loads(json_str)
+                else:
+                    # Try parsing the whole response as JSON
+                    tool_call = json.loads(response_text)
+                
+                if isinstance(tool_call, dict) and "tool" in tool_call and "parameters" in tool_call:
+                    # Execute the tool call
+                    tool_response = await mcp_manager.call_tool(
+                        "default_mcp_server",
+                        tool_call["tool"],
+                        tool_call["parameters"]
+                    )
+                    return {"response": str(tool_response)}
+            except json.JSONDecodeError:
+                # Not a tool call, return Claude's response
+                pass
+            
             return {"response": response.content[0].text}
         else:
             # Use MCP server for other servers
