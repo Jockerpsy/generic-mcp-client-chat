@@ -13,11 +13,13 @@ People should not need to write new code to write new agents. This UI is an expe
 ## Features
 
 - Real-time chat interface with Claude 3 Sonnet
-- Tool support (currently implements an echo tool)
+- Tool support (echo and repeat tools)
 - WebSocket-based communication
 - Modern, responsive UI
 - Connection status monitoring
 - Error handling and user feedback
+- Multi-server support with automatic tool discovery
+- Support for custom MCP servers
 
 ## Prerequisites
 
@@ -40,7 +42,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 3. Install dependencies:
 ```bash
-pip install websockets anthropic python-dotenv
+pip install -r requirements.txt
 ```
 
 4. Create a `.env` file in the project root:
@@ -55,14 +57,19 @@ ANTHROPIC_API_KEY=your_api_key_here
 python mcp_server.py
 ```
 
-2. Open your web browser and navigate to:
+2. Start the main server:
+```bash
+python server.py
 ```
-http://localhost:8001/static/index.html
+
+3. Open your web browser and navigate to:
+```
+http://localhost:8001
 ```
 
 ## Tool Support
 
-The system currently supports the following tool:
+The system currently supports the following tools:
 
 ### Echo Tool
 - **Name**: echo
@@ -74,15 +81,28 @@ The system currently supports the following tool:
   }
   ```
 
-To use the echo tool, simply ask Claude to use it. For example:
+### Repeat Tool
+- **Name**: repeat
+- **Description**: Repeats the input message 10 times
+- **Parameters**: 
+  ```json
+  {
+    "message": "text to repeat"
+  }
+  ```
+
+To use the tools, simply ask Claude to use them. For example:
 - "Can you use the echo tool to repeat back my message?"
-- "Please use the echo tool to echo back: Hello World!"
+- "Please use the repeat tool to repeat: Hello World!"
 
 ## Project Structure
 
-- `mcp_server.py`: WebSocket server that handles communication with Claude's API
+- `mcp_server.py`: WebSocket server that provides MCP tools
+- `server.py`: Main server that connects to MCP servers and handles chat
 - `static/`: Frontend files
-  - `index.html`: Main chat interface with WebSocket client and UI logic
+  - `index.html`: Main chat interface
+  - `js/mcp-client.js`: Frontend JavaScript
+  - `css/styles.css`: Styling
 - `.env`: Configuration file (create this)
 
 ## Error Handling
@@ -97,10 +117,10 @@ All errors are displayed to the user in the chat interface with appropriate styl
 
 ## Development
 
-To add new tools:
-1. Add the tool definition to the `tools` dictionary in `MCPServer.__init__`
-2. Update the system prompt in `get_llm_response` to include the new tool
-3. Implement the tool handling logic in `handle_message`
+- The project uses FastAPI for the backend
+- FastMCP for MCP server implementation
+- Anthropic's Claude API for chat
+- Vanilla JavaScript for the frontend
 
 ## License
 
